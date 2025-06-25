@@ -1,11 +1,7 @@
+
 import React, { useState } from 'react';
 import Navigation from '@/components/Navigation';
-import { Calendar, Plus, Clock, CheckCircle, X, Users, Search, CalendarIcon } from 'lucide-react';
-import { Calendar as CalendarComponent } from '@/components/ui/calendar';
-import { Popover, PopoverContent, PopoverTrigger } from '@/components/ui/popover';
-import { Button } from '@/components/ui/button';
-import { format } from 'date-fns';
-import { cn } from '@/lib/utils';
+import { Calendar, Plus, Clock, CheckCircle, X, Users, Search } from 'lucide-react';
 
 interface LectureBlock {
   id: string;
@@ -20,8 +16,6 @@ const Attendance = () => {
   const [searchBatch, setSearchBatch] = useState('');
   const [showAddClass, setShowAddClass] = useState(false);
   const [newClass, setNewClass] = useState({ subject: '', time: '', day: '' });
-  const [selectedDate, setSelectedDate] = useState<Date | undefined>(new Date());
-  const [selectedDay, setSelectedDay] = useState('');
 
   const [timetable, setTimetable] = useState<LectureBlock[]>([
     { id: '1', subject: 'Mathematics', time: '9:00 AM', day: 'Monday', status: null },
@@ -97,7 +91,7 @@ const Attendance = () => {
             </h1>
             <p className="text-gray-600 dark:text-gray-400 mb-8">Select your batch to view your timetable</p>
             
-            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 max-w-md mx-auto">
+            <div className="bg-white dark:bg-gray-800 rounded-xl p-8 shadow-sm border border-gray-100 dark:border-gray-700 max-w-m mx-auto">
               <h2 className="text-xl font-semibold text-gray-900 dark:text-white mb-4">Select Your Batch</h2>
               
               {/* Search Input */}
@@ -134,12 +128,6 @@ const Attendance = () => {
     return acc;
   }, {} as Record<string, LectureBlock[]>);
 
-  const filteredDays = selectedDay ? [selectedDay] : days;
-  const filteredGroupedTimetable = filteredDays.reduce((acc, day) => {
-    acc[day] = groupedTimetable[day] || [];
-    return acc;
-  }, {} as Record<string, LectureBlock[]>);
-
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Navigation currentPath="/attendance" />
@@ -169,57 +157,8 @@ const Attendance = () => {
           </div>
         </div>
 
-        {/* Date and Day Selectors */}
-        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Filter by Date & Day</h3>
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-            {/* Date Picker */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Date</label>
-              <Popover>
-                <PopoverTrigger asChild>
-                  <Button
-                    variant="outline"
-                    className={cn(
-                      "w-full justify-start text-left font-normal dark:bg-gray-700 dark:border-gray-600 dark:text-white",
-                      !selectedDate && "text-muted-foreground"
-                    )}
-                  >
-                    <CalendarIcon className="mr-2 h-4 w-4" />
-                    {selectedDate ? format(selectedDate, "PPP") : <span>Pick a date</span>}
-                  </Button>
-                </PopoverTrigger>
-                <PopoverContent className="w-auto p-0" align="start">
-                  <CalendarComponent
-                    mode="single"
-                    selected={selectedDate}
-                    onSelect={setSelectedDate}
-                    initialFocus
-                    className="p-3 pointer-events-auto"
-                  />
-                </PopoverContent>
-              </Popover>
-            </div>
-            
-            {/* Day Selector */}
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Filter by Day</label>
-              <select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Days</option>
-                {days.map(day => (
-                  <option key={day} value={day}>{day}</option>
-                ))}
-              </select>
-            </div>
-          </div>
-        </div>
-
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {Object.entries(filteredGroupedTimetable).map(([day, lectures]) => (
+          {Object.entries(groupedTimetable).map(([day, lectures]) => (
             <div key={day} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
               <div className="p-4 border-b border-gray-100 dark:border-gray-700">
                 <h3 className="font-semibold text-gray-900 dark:text-white">{day}</h3>

@@ -5,7 +5,7 @@ import { Home, BookOpen, Users, Calendar, Bell, User, Moon, Sun, Menu } from 'lu
 import { cn } from '@/lib/utils';
 import { useTheme } from '@/contexts/ThemeContext';
 import { useAuth } from '@/contexts/AuthContext';
-import LoginPopup from './LoginPopup';
+import AuthPopup from './AuthPopup';
 import UserPopup from './UserPopup';
 import MobileMenu from './MobileMenu';
 
@@ -14,11 +14,11 @@ interface NavigationProps {
 }
 
 const Navigation = ({ currentPath = '/' }: NavigationProps) => {
-  const [showLoginPopup, setShowLoginPopup] = useState(false);
+  const [showAuthPopup, setShowAuthPopup] = useState(false);
   const [showUserPopup, setShowUserPopup] = useState(false);
   const [showMobileMenu, setShowMobileMenu] = useState(false);
   const { theme, toggleTheme } = useTheme();
-  const { isLoggedIn } = useAuth();
+  const { isLoggedIn, loading } = useAuth();
 
   const navItems = [
     { icon: Home, label: 'Dashboard', path: '/' },
@@ -31,7 +31,7 @@ const Navigation = ({ currentPath = '/' }: NavigationProps) => {
     if (isLoggedIn) {
       setShowUserPopup(true);
     } else {
-      setShowLoginPopup(true);
+      setShowAuthPopup(true);
     }
   };
 
@@ -90,7 +90,8 @@ const Navigation = ({ currentPath = '/' }: NavigationProps) => {
               {/* User Profile */}
               <button 
                 onClick={handleUserClick}
-                className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors"
+                disabled={loading}
+                className="p-2 text-gray-600 dark:text-gray-300 hover:text-gray-900 dark:hover:text-white hover:bg-gray-100 dark:hover:bg-gray-700 rounded-lg transition-colors disabled:opacity-50"
               >
                 <User size={20} />
               </button>
@@ -115,9 +116,9 @@ const Navigation = ({ currentPath = '/' }: NavigationProps) => {
       />
 
       {/* Popups */}
-      <LoginPopup 
-        isOpen={showLoginPopup} 
-        onClose={() => setShowLoginPopup(false)} 
+      <AuthPopup 
+        isOpen={showAuthPopup} 
+        onClose={() => setShowAuthPopup(false)} 
       />
       <UserPopup 
         isOpen={showUserPopup} 

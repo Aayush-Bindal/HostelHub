@@ -1,7 +1,8 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { BookOpen, Search, Filter, Plus, ExternalLink, Calendar, User } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Resources = () => {
   const [selectedSubject, setSelectedSubject] = useState('all');
@@ -61,6 +62,15 @@ const Resources = () => {
       description: 'Complete implementation of basic data structures in C++'
     }
   ]);
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/'); // Redirect to Dashboard or Home
+    }
+  }, [user, navigate]);
 
   const filteredResources = resources.filter(resource => {
     const matchesSubject = selectedSubject === 'all' || resource.subject === selectedSubject;

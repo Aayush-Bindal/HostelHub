@@ -131,15 +131,15 @@ const Attendance = () => {
 
   const addNewClass = async () => {
     if (!user) {
-      alert("You must be logged in to add a class.");
+      // Optionally show a UI message instead of alert
       return;
     }
     if (!newClass.subject.trim()) {
-      alert("Please enter a subject name.");
+      // Optionally show a UI message instead of alert
       return;
     }
     if (newClass.days.length === 0) {
-      alert("Please select at least one day.");
+      // Optionally show a UI message instead of alert
       return;
     }
 
@@ -158,9 +158,9 @@ const Attendance = () => {
       setTimetable(prev => [...prev, newLecture]);
       setNewClass({ subject: '', days: [] });
       setShowAddClass(false);
-      alert("Class added successfully!");
+      // Removed alert("Class added successfully!");
     } catch (error) {
-      alert("Error adding class: " + error);
+      // Optionally log or handle error
       console.error("Error adding class:", error);
     }
   };

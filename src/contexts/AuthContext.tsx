@@ -1,4 +1,3 @@
-
 import React, { createContext, useContext, useState, useEffect } from 'react';
 import { 
   signInWithEmailAndPassword, 
@@ -9,6 +8,8 @@ import {
   User as FirebaseUser
 } from 'firebase/auth';
 import { auth } from '@/lib/firebase';
+import { db } from '@/lib/firebase';
+import { doc, setDoc } from 'firebase/firestore';
 
 interface User {
   name: string;
@@ -72,6 +73,13 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
       await updateProfile(userCredential.user, {
         displayName: name
       });
+      // Save user info to Firestore
+      await setDoc(doc(db, 'users', userCredential.user.uid), {
+        name,
+        email,
+        uid: userCredential.user.uid
+      });
+      alert(`Hello, ${name}`)
       return true;
     } catch (error) {
       console.error('Signup error:', error);

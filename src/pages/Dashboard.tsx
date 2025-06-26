@@ -11,6 +11,7 @@ import { useAuth } from '@/contexts/AuthContext';
 const Dashboard = () => {
   const { user } = useAuth();
   const [attendanceData, setAttendanceData] = useState<any[]>([]);
+  const [totalSubjects, setTotalSubjects] = useState(0);
 
   useEffect(() => {
     const fetchAttendanceData = async () => {
@@ -78,7 +79,15 @@ const Dashboard = () => {
       setAttendanceData(data);
     };
 
+    const fetchTotalSubjects = async () => {
+      if (!user) return;
+      const attendanceCol = collection(db, 'users', user.uid, 'attendance');
+      const subjectsSnap = await getDocs(attendanceCol);
+      setTotalSubjects(subjectsSnap.size);
+    };
+
     fetchAttendanceData();
+    fetchTotalSubjects();
   }, [user]);
 
   return (
@@ -98,7 +107,7 @@ const Dashboard = () => {
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
           <StatsCard
             title="Total Subjects"
-            value="6"
+            value={totalSubjects.toString()}
             icon={BookOpen}
             color="purple"
           />

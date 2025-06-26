@@ -204,6 +204,15 @@ const Attendance = () => {
     return acc;
   }, {} as Record<string, LectureBlock[]>);
 
+  // Helper to get today's date in yyyy-mm-dd format
+  const getTodayStr = () => {
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    return `${yyyy}-${mm}-${dd}`;
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
       <Navigation currentPath="/attendance" />
@@ -227,9 +236,9 @@ const Attendance = () => {
           </div>
         </div>
 
-        {/* Date and Day Selection */}
+        {/* Date Selection Only (removed Select Day) */}
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-sm border border-gray-100 dark:border-gray-700 mb-8">
-          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Select Date & Day for Attendance</h3>
+          <h3 className="text-lg font-semibold text-gray-900 dark:text-white mb-4">Select Date for Attendance</h3>
           <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
             <div>
               <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Date</label>
@@ -247,50 +256,26 @@ const Attendance = () => {
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               />
             </div>
-
-            <div>
-              <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Select Day</label>
-              <select
-                value={selectedDay}
-                onChange={(e) => setSelectedDay(e.target.value)}
-                disabled={!!selectedDate}
-                className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-              >
-                <option value="">All Days</option>
-                {days.map(day => (
-                  <option
-                    key={day}
-                    value={day}
-                    style={{
-                      fontWeight: selectedDay === day ? 'bold' : 'normal',
-                      background: selectedDay === day ? '#a5b4fc' : undefined
-                    }}
-                  >
-                    {day}
-                  </option>
-                ))}
-              </select>
-            </div>
-
             <div className="flex items-end">
               <button
                 onClick={() => {
-                  setSelectedDate('');
-                  setSelectedDay('');
+                  const todayStr = getTodayStr();
+                  setSelectedDate(todayStr);
+                  setSelectedDay(getDayName(todayStr));
                 }}
                 className="w-full px-4 py-2 text-gray-600 dark:text-gray-400 border border-gray-300 dark:border-gray-600 rounded-lg hover:bg-gray-50 dark:hover:bg-gray-700 transition-colors"
               >
-                Reset Filters
+                Reset Date
               </button>
             </div>
           </div>
 
-          {(selectedDate || selectedDay) && (
+          {selectedDate && (
             <div className="mt-4 p-4 bg-purple-50 dark:bg-purple-900/20 rounded-lg border border-purple-200 dark:border-purple-800">
               <p className="text-purple-700 dark:text-purple-300 font-medium">
-                {selectedDate && `Date: ${new Date(selectedDate).toLocaleDateString()}`}
-                {selectedDate && selectedDay && ' | '}
-                {selectedDay && `Day: ${selectedDay}`}
+                Date: {new Date(selectedDate).toLocaleDateString()}
+                {" | "}
+                Day: {getDayName(selectedDate)}
               </p>
             </div>
           )}

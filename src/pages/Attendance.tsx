@@ -55,6 +55,7 @@ const Attendance = () => {
   const [confirmedAttendance, setConfirmedAttendance] = useState<{ [key: string]: boolean }>({});
   const [attendanceStatus, setAttendanceStatus] = useState<{ [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null }>({});
   const [confirmedStatus, setConfirmedStatus] = useState<{ [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null }>({});
+  const [successMessage, setSuccessMessage] = useState('');
 
   const [timetable, setTimetable] = useState<LectureBlock[]>([]);
 
@@ -130,24 +131,10 @@ const Attendance = () => {
   };
 
   const addNewClass = async () => {
-    if (!user) {
-      // Optionally show a UI message instead of alert
-      return;
-    }
-    if (!newClass.subject.trim()) {
-      // Optionally show a UI message instead of alert
-      return;
-    }
-    if (newClass.days.length === 0) {
-      // Optionally show a UI message instead of alert
-      return;
-    }
-
+    if (!user || !newClass.subject.trim() || newClass.days.length === 0) return;
     try {
       const subjectRef = doc(db, 'users', user.uid, 'attendance', newClass.subject);
-      await setDoc(subjectRef, {
-        days: newClass.days
-      }, { merge: true });
+      await setDoc(subjectRef, { days: newClass.days }, { merge: true });
 
       const newLecture: LectureBlock = {
         id: newClass.subject,
@@ -158,9 +145,10 @@ const Attendance = () => {
       setTimetable(prev => [...prev, newLecture]);
       setNewClass({ subject: '', days: [] });
       setShowAddClass(false);
-      // Removed alert("Class added successfully!");
+
+      setSuccessMessage('Class added successfully!');
+      setTimeout(() => setSuccessMessage(''), 2000); // Hide after 2 seconds
     } catch (error) {
-      // Optionally log or handle error
       console.error("Error adding class:", error);
     }
   };
@@ -441,6 +429,12 @@ const Attendance = () => {
                 </button>
               </div>
             </div>
+          </div>
+        )}
+
+        {successMessage && (
+          <div className="fixed top-6 left-1/2 -translate-x-1/2 z-50 bg-green-600 text-white px-6 py-3 rounded-lg shadow-lg transition-opacity duration-300 opacity-100 animate-bounce">
+            {successMessage}
           </div>
         )}
       </div>

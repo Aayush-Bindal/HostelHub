@@ -1,12 +1,14 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import { Calendar, Plus, Clock, CheckCircle, X, Users } from 'lucide-react';
+import { db } from '@/lib/firebase';
+import { collection, doc, setDoc, getDocs, getDoc } from 'firebase/firestore';
+import { useAuth } from '@/contexts/AuthContext';
 
 interface LectureBlock {
   id: string;
   subject: string;
-  time: string;
-  day: string;
+  day: string; // e.g. "Monday, Wednesday"
   status: 'attending' | 'missed' | 'cancelled' | 'proxy' | null;
 }
 
@@ -23,44 +25,157 @@ const getDayName = (dateString: string) => {
   return days[dayIndex - 1];
 };
 
+function getDateOfWeek(selectedDate: string, targetDay: string) {
+  const date = new Date(selectedDate);
+  const currentDayIndex = date.getDay(); // 0=Sunday, 1=Monday, ..., 6=Saturday
+  const daysMap = { Sunday: 0, Monday: 1, Tuesday: 2, Wednesday: 3, Thursday: 4, Friday: 5, Saturday: 6 };
+  const targetDayIndex = daysMap[targetDay];
+  // Calculate difference to get to target day in the same week
+  const diff = targetDayIndex - currentDayIndex;
+  const targetDate = new Date(date);
+  targetDate.setDate(date.getDate() + diff);
+  // Format as yyyy-mm-dd
+  const yyyy = targetDate.getFullYear();
+  const mm = String(targetDate.getMonth() + 1).padStart(2, '0');
+  const dd = String(targetDate.getDate()).padStart(2, '0');
+  return `${yyyy}-${mm}-${dd}`;
+}
+
+// Helper to format date as DD/MM/YYYY
+const formatIndianDate = (dateString: string) => {
+  const [yyyy, mm, dd] = dateString.split('-');
+  return `${dd}/${mm}/${yyyy}`;
+};
+
 const Attendance = () => {
   const [selectedDate, setSelectedDate] = useState('');
   const [selectedDay, setSelectedDay] = useState('');
   const [showAddClass, setShowAddClass] = useState(false);
-  const [newClass, setNewClass] = useState({ subject: '', time: '', day: '' });
+  const [newClass, setNewClass] = useState({ subject: '', days: [] as string[] });
+  const [confirmedAttendance, setConfirmedAttendance] = useState<{ [key: string]: boolean }>({});
+  const [attendanceStatus, setAttendanceStatus] = useState<{ [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null }>({});
+  const [confirmedStatus, setConfirmedStatus] = useState<{ [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null }>({});
 
-  const [timetable, setTimetable] = useState<LectureBlock[]>([
-    { id: '1', subject: 'Mathematics', time: '9:00 AM', day: 'Monday', status: null },
-    { id: '2', subject: 'Physics', time: '11:00 AM', day: 'Monday', status: null },
-    { id: '3', subject: 'Chemistry', time: '2:00 PM', day: 'Monday', status: null },
-    { id: '4', subject: 'Computer Science', time: '9:00 AM', day: 'Tuesday', status: null },
-    { id: '5', subject: 'Mathematics', time: '11:00 AM', day: 'Tuesday', status: null },
-    { id: '6', subject: 'English', time: '2:00 PM', day: 'Tuesday', status: null },
-    { id: '7', subject: 'Physics', time: '9:00 AM', day: 'Wednesday', status: null },
-    { id: '8', subject: 'Chemistry', time: '11:00 AM', day: 'Wednesday', status: null },
-  ]);
+  const [timetable, setTimetable] = useState<LectureBlock[]>([]);
 
-  const handleStatusChange = (lectureId: string, status: 'attending' | 'missed' | 'cancelled' | 'proxy') => {
-    setTimetable(prev =>
-      prev.map(lecture =>
-        lecture.id === lectureId ? { ...lecture, status } : lecture
-      )
-    );
+  const { user } = useAuth();
+
+  // Fetch classes from Firestore on mount or when user changes
+  useEffect(() => {
+    const fetchClasses = async () => {
+      if (!user) return;
+      const attendanceCol = collection(db, 'users', user.uid, 'attendance');
+      const snapshot = await getDocs(attendanceCol);
+      const classes: LectureBlock[] = [];
+      snapshot.forEach(docSnap => {
+        const data = docSnap.data();
+        classes.push({
+          id: docSnap.id, // subject name as id
+          subject: docSnap.id, // subject name from doc id
+          day: (data.days || []).join(', '), // join days array for display
+          status: null
+        });
+      });
+      setTimetable(classes);
+    };
+    fetchClasses();
+  }, [user]);
+
+  useEffect(() => {
+    // Set default date to today on mount
+    const today = new Date();
+    const yyyy = today.getFullYear();
+    const mm = String(today.getMonth() + 1).padStart(2, '0');
+    const dd = String(today.getDate()).padStart(2, '0');
+    const todayStr = `${yyyy}-${mm}-${dd}`;
+    setSelectedDate(todayStr);
+    setSelectedDay(getDayName(todayStr));
+  }, []);
+
+  // Fetch confirmed attendance for the week of selectedDate
+  useEffect(() => {
+    const fetchConfirmedAttendance = async () => {
+      if (!user || !selectedDate) return;
+      const newConfirmed: { [key: string]: boolean } = {};
+      const newConfirmedStatus: { [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null } = {};
+      for (const lecture of timetable) {
+        for (const day of lecture.day.split(', ')) {
+          const dateForDay = getDateOfWeek(selectedDate, day);
+          const key = `${lecture.subject}_${day}_${dateForDay}`;
+          const recordRef = doc(db, 'users', user.uid, 'attendance', lecture.subject, 'records', key);
+          const recordSnap = await getDoc(recordRef);
+          if (recordSnap.exists()) {
+            newConfirmed[key] = true;
+            newConfirmedStatus[key] = recordSnap.data().status || null;
+          }
+        }
+      }
+      setConfirmedAttendance(newConfirmed);
+      setConfirmedStatus(newConfirmedStatus);
+    };
+    fetchConfirmedAttendance();
+    // eslint-disable-next-line
+  }, [user, selectedDate, timetable.length]);
+
+  const handleStatusChange = (subject: string, day: string, status: 'attending' | 'missed' | 'cancelled' | 'proxy') => {
+    setAttendanceStatus(prev => ({
+      ...prev,
+      [`${subject}_${day}`]: status
+    }));
   };
 
-  const addNewClass = () => {
-    if (newClass.subject && newClass.time && newClass.day) {
+  const addNewClass = async () => {
+    if (!user) {
+      alert("You must be logged in to add a class.");
+      return;
+    }
+    if (!newClass.subject.trim()) {
+      alert("Please enter a subject name.");
+      return;
+    }
+    if (newClass.days.length === 0) {
+      alert("Please select at least one day.");
+      return;
+    }
+
+    try {
+      const subjectRef = doc(db, 'users', user.uid, 'attendance', newClass.subject);
+      await setDoc(subjectRef, {
+        days: newClass.days
+      }, { merge: true });
+
       const newLecture: LectureBlock = {
-        id: Date.now().toString(),
+        id: newClass.subject,
         subject: newClass.subject,
-        time: newClass.time,
-        day: newClass.day,
+        day: newClass.days.join(', '),
         status: null
       };
       setTimetable(prev => [...prev, newLecture]);
-      setNewClass({ subject: '', time: '', day: '' });
+      setNewClass({ subject: '', days: [] });
       setShowAddClass(false);
+      alert("Class added successfully!");
+    } catch (error) {
+      alert("Error adding class: " + error);
+      console.error("Error adding class:", error);
     }
+  };
+
+  const handleConfirmAttendance = async (subject: string, day: string) => {
+    if (!user) return;
+    // Get the date for the selected day in the week of selectedDate
+    const dateForDay = getDateOfWeek(selectedDate, day);
+    const key = `${subject}_${day}_${dateForDay}`;
+    const status = attendanceStatus[`${subject}_${day}`];
+    if (!status) return;
+
+    const recordRef = doc(db, 'users', user.uid, 'attendance', subject, 'records', key);
+    await setDoc(recordRef, {
+      date: dateForDay,
+      day,
+      status
+    });
+
+    setConfirmedAttendance(prev => ({ ...prev, [key]: true }));
   };
 
   const getStatusIcon = (status: string | null) => {
@@ -78,12 +193,11 @@ const Attendance = () => {
     ? timetable.filter(lecture => lecture.day === selectedDay)
     : timetable;
 
-  const groupedTimetable = selectedDay
-    ? { [selectedDay]: filteredTimetable }
-    : days.reduce((acc, day) => {
-        acc[day] = timetable.filter(lecture => lecture.day === day);
-        return acc;
-      }, {} as Record<string, LectureBlock[]>);
+  // Group by day, but for each day, filter subjects that include that day
+  const groupedTimetable = days.reduce((acc, day) => {
+    acc[day] = timetable.filter(lecture => lecture.day.split(', ').includes(day));
+    return acc;
+  }, {} as Record<string, LectureBlock[]>);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
@@ -134,11 +248,21 @@ const Attendance = () => {
               <select
                 value={selectedDay}
                 onChange={(e) => setSelectedDay(e.target.value)}
+                disabled={!!selectedDate}
                 className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
               >
                 <option value="">All Days</option>
                 {days.map(day => (
-                  <option key={day} value={day}>{day}</option>
+                  <option
+                    key={day}
+                    value={day}
+                    style={{
+                      fontWeight: selectedDay === day ? 'bold' : 'normal',
+                      background: selectedDay === day ? '#a5b4fc' : undefined
+                    }}
+                  >
+                    {day}
+                  </option>
                 ))}
               </select>
             </div>
@@ -168,71 +292,107 @@ const Attendance = () => {
         </div>
 
         <div className="grid grid-cols-1 lg:grid-cols-2 xl:grid-cols-3 gap-6">
-          {Object.keys(groupedTimetable).map(day => (
-            <div key={day} className="bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700">
-              <div className="p-4 border-b border-gray-100 dark:border-gray-700">
-                <h3 className="font-semibold text-gray-900 dark:text-white">{day}</h3>
-              </div>
-              <div className="p-4 space-y-3">
-                {groupedTimetable[day]?.length > 0 ? (
-                  groupedTimetable[day].map(lecture => (
-                    <div key={lecture.id} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
-                      <div className="flex items-center justify-between mb-2">
-                        <h4 className="font-medium text-gray-900 dark:text-white">{lecture.subject}</h4>
-                        {getStatusIcon(lecture.status)}
-                      </div>
-                      <p className="text-sm text-gray-600 dark:text-gray-400 mb-3">{lecture.time}</p>
+          {Object.keys(groupedTimetable).map(day => {
+            // Highlight if this day matches the selected date's day
+            const isHighlighted = day === getDayName(selectedDate);
+            return (
+              <div
+                key={day}
+                className={`bg-white dark:bg-gray-800 rounded-xl shadow-sm border border-gray-100 dark:border-gray-700
+                  ${isHighlighted ? 'ring-2 ring-purple-400 border-purple-400 dark:ring-purple-500' : ''}`}
+              >
+                <div className="p-4 border-b border-gray-100 dark:border-gray-700">
+                  <h3 className={`font-semibold ${isHighlighted ? 'text-purple-700 dark:text-purple-300' : 'text-gray-900 dark:text-white'}`}>{day}</h3>
+                </div>
+                <div className="p-4 space-y-3">
+                  {groupedTimetable[day]?.length > 0 ? (
+                    groupedTimetable[day].map(lecture => {
+                      const key = `${lecture.subject}_${day}`;
+                      const dateForDay = getDateOfWeek(selectedDate, day);
+                      const lockKey = `${lecture.subject}_${day}_${dateForDay}`;
+                      const status = attendanceStatus[key];
+                      return (
+                        <div key={key} className="border border-gray-200 dark:border-gray-600 rounded-lg p-3">
+                          <div className="flex items-center justify-between mb-2">
+                            <h4 className="font-medium text-gray-900 dark:text-white">{lecture.subject}</h4>
+                            {getStatusIcon(status)}
+                          </div>
+                          <div className="text-xs text-gray-500 dark:text-gray-400 mb-2">
+                            Date: {formatIndianDate(dateForDay)}
+                          </div>
+                          <div className="grid grid-cols-2 gap-2">
+                            <button
+                              onClick={() => handleStatusChange(lecture.subject, day, 'attending')}
+                              disabled={confirmedAttendance[lockKey]}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                status === 'attending'
+                                  ? 'bg-green-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-100 dark:hover:bg-green-900/20'
+                              } ${confirmedAttendance[lockKey] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              Attending
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(lecture.subject, day, 'missed')}
+                              disabled={confirmedAttendance[lockKey]}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                status === 'missed'
+                                  ? 'bg-red-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/20'
+                              } ${confirmedAttendance[lockKey] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              Missed
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(lecture.subject, day, 'cancelled')}
+                              disabled={confirmedAttendance[lockKey]}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                status === 'cancelled'
+                                  ? 'bg-gray-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
+                              } ${confirmedAttendance[lockKey] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              Cancelled
+                            </button>
+                            <button
+                              onClick={() => handleStatusChange(lecture.subject, day, 'proxy')}
+                              disabled={confirmedAttendance[lockKey]}
+                              className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
+                                status === 'proxy'
+                                  ? 'bg-blue-500 text-white'
+                                  : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900/20'
+                              } ${confirmedAttendance[lockKey] ? 'opacity-50 cursor-not-allowed' : ''}`}
+                            >
+                              Proxy
+                            </button>
+                          </div>
 
-                      <div className="grid grid-cols-2 gap-2">
-                        <button
-                          onClick={() => handleStatusChange(lecture.id, 'attending')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            lecture.status === 'attending'
-                              ? 'bg-green-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-green-100 dark:hover:bg-green-900/20'
-                          }`}
-                        >
-                          Attending
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(lecture.id, 'missed')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            lecture.status === 'missed'
-                              ? 'bg-red-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-red-100 dark:hover:bg-red-900/20'
-                          }`}
-                        >
-                          Missed
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(lecture.id, 'cancelled')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            lecture.status === 'cancelled'
-                              ? 'bg-gray-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-gray-200 dark:hover:bg-gray-600'
-                          }`}
-                        >
-                          Cancelled
-                        </button>
-                        <button
-                          onClick={() => handleStatusChange(lecture.id, 'proxy')}
-                          className={`px-3 py-1 rounded text-xs font-medium transition-colors ${
-                            lecture.status === 'proxy'
-                              ? 'bg-blue-500 text-white'
-                              : 'bg-gray-100 dark:bg-gray-700 text-gray-700 dark:text-gray-300 hover:bg-blue-100 dark:hover:bg-blue-900/20'
-                          }`}
-                        >
-                          Proxy
-                        </button>
-                      </div>
-                    </div>
-                  ))
-                ) : (
-                  <p className="text-gray-500 dark:text-gray-400 text-center py-4">No classes scheduled</p>
-                )}
+                          {/* Confirm Button */}
+                          {!confirmedAttendance[lockKey] && status && (
+                            <button
+                              onClick={() => handleConfirmAttendance(lecture.subject, day)}
+                              className="mt-3 w-full px-3 py-1 rounded text-xs font-bold bg-blue-600 text-white hover:bg-blue-700"
+                            >
+                              Confirm
+                            </button>
+                          )}
+                          {confirmedAttendance[lockKey] && (
+                            <div className="mt-3 text-green-600 font-semibold text-xs text-center">
+                              Confirmed: {confirmedStatus[lockKey] && (
+                                <span className="capitalize">{confirmedStatus[lockKey]}</span>
+                              )}
+                            </div>
+                          )}
+                        </div>
+                      );
+                    })
+                  ) : (
+                    <p className="text-gray-500 dark:text-gray-400 text-center py-4">No classes scheduled</p>
+                  )}
+                </div>
               </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
 
         {showAddClass && (
@@ -253,28 +413,26 @@ const Attendance = () => {
                 </div>
 
                 <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Time</label>
-                  <input
-                    type="text"
-                    value={newClass.time}
-                    onChange={(e) => setNewClass(prev => ({ ...prev, time: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                    placeholder="e.g., 9:00 AM"
-                  />
-                </div>
-
-                <div>
-                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Day</label>
-                  <select
-                    value={newClass.day}
-                    onChange={(e) => setNewClass(prev => ({ ...prev, day: e.target.value }))}
-                    className="w-full px-3 py-2 border border-gray-300 dark:border-gray-600 rounded-lg focus:ring-2 focus:ring-purple-500 focus:border-transparent dark:bg-gray-700 dark:text-white"
-                  >
-                    <option value="">Select day</option>
+                  <label className="block text-sm font-medium text-gray-700 dark:text-gray-300 mb-2">Days</label>
+                  <div className="flex flex-wrap gap-2">
                     {days.map(day => (
-                      <option key={day} value={day}>{day}</option>
+                      <label key={day} className="flex items-center space-x-1">
+                        <input
+                          type="checkbox"
+                          checked={newClass.days.includes(day)}
+                          onChange={e => {
+                            setNewClass(prev => ({
+                              ...prev,
+                              days: e.target.checked
+                                ? [...prev.days, day]
+                                : prev.days.filter(d => d !== day)
+                            }));
+                          }}
+                        />
+                        <span>{day}</span>
+                      </label>
                     ))}
-                  </select>
+                  </div>
                 </div>
               </div>
 

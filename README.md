@@ -1,73 +1,118 @@
-# Welcome to your Lovable project
+# 🧠 HostelHub+ – Tech Requirements
 
-## Project info
+A full-stack AI-powered productivity and community platform for college students.
 
-**URL**: https://lovable.dev/projects/fc312ca0-2c35-4ab3-9bda-67c777ce1e2a
+---
 
-## How can I edit this code?
+## 🛠 Core Technology Stack
 
-There are several ways of editing your application.
+| Layer        | Technology                          | Purpose                             |
+|-------------|--------------------------------------|-------------------------------------|
+| **Frontend** | React.js (Web) + Tailwind CSS        | UI components, routing, state mgmt. |
+| **Backend**  | Firebase (Firestore, Auth, Hosting)  | User data, storage, hosting         |
+| **AI/ML**    | Python + HuggingFace / OpenAI APIs   | Bunk predictor, summarizer, tagging |
+| **Design**   | Figma                                | UI mockups & wireframes             |
+| **Deployment**| Vercel / Firebase Hosting           | Frontend deployment                 |
+| **Version Control** | GitHub                        | Code collaboration & CI/CD          |
 
-**Use Lovable**
+---
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/fc312ca0-2c35-4ab3-9bda-67c777ce1e2a) and start prompting.
+## 🔧 Module-wise Breakdown
 
-Changes made via Lovable will be committed automatically to this repo.
+### 📊 Attendance Manager
+- **Frontend:** React + Recharts/Chart.js
+- **Backend:** Firestore DB for attendance
+- **AI:** Logistic regression model for bunk prediction
+- **Libraries:** `scikit-learn`, `pandas`
 
-**Use your preferred IDE**
+---
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+### 📚 Academic Resource Hubs
+- **Frontend:** File uploader, group-based UI
+- **Backend:** Firebase Firestore + Storage
+- **AI:** HuggingFace Zero-Shot Classification or Cohere
+- **Libraries:** `transformers`, `requests`, `firebase-admin`
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+### 🧠 Peer-to-Peer Advice System
+- **Frontend:** Thread UI (React), `react-quill` for text
+- **Backend:** Firestore Q&A threads + upvotes
+- **AI:** Summarization via OpenAI GPT-4o or HuggingFace T5
+- **API:** `openai`, `cohere`, or Firebase Functions
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+---
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### 🗓️ Weekly Academic Feed
+- **Frontend:** Dashboard panel
+- **Backend:** Firestore schedule logic
+- **AI:** Rule-based or collaborative filtering engine
 
-# Step 3: Install the necessary dependencies.
-npm i
+---
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### 📖 Study Buddy Finder
+- **Frontend:** Status selector UI, filtered listing
+- **Backend:** Firestore for user statuses
+- **Optional:** Realtime presence using Firestore polling
 
-**Edit a file directly in GitHub**
+---
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### 🏆 XP & Gamification System
+- **Frontend:** Progress bar, badge icons
+- **Backend:** Firestore triggers for XP points
+- **Logic:** Simple counter-based tracking and leaderboards
 
-**Use GitHub Codespaces**
+---
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### 🍱 Hostel Mess Menu & Feedback
+- **Frontend:** Menu viewer + feedback forms
+- **Backend:** Firestore menu data + feedback entries
+- **AI:** Sentiment analysis via HF `distilbert-base-uncased-finetuned-sst-2-english`
 
-## What technologies are used for this project?
+---
 
-This project is built with:
+### 🌍 Regional & Batch Communities
+- **Frontend:** Group join/search interface
+- **Backend:** Firestore for communities and membership
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+---
 
-## How can I deploy this project?
+## 🧠 AI/ML Features
 
-Simply open [Lovable](https://lovable.dev/projects/fc312ca0-2c35-4ab3-9bda-67c777ce1e2a) and click on Share -> Publish.
+| Feature                  | Model/API                         | Hosting Method                   |
+|--------------------------|-----------------------------------|----------------------------------|
+| **Bunk Risk Predictor**   | `scikit-learn` logistic regression| Firebase Function or Flask API   |
+| **Smart Resource Tagging**| HuggingFace Zero-shot             | FastAPI / HF Spaces              |
+| **Q&A Summarizer**       | GPT-4o or Cohere Summarizer       | Firebase Function proxy          |
+| **Content Recommender**  | Rule-based or ML classifier       | Firebase Function or Python app  |
+| **Sentiment Analysis**   | HF DistilBERT SST-2               | API call / locally served model  |
 
-## Can I connect a custom domain to my Lovable project?
+---
 
-Yes, you can!
+## 🧰 Dev Tools
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+| Purpose         | Tool                                |
+|----------------|-------------------------------------|
+| Hosting         | Firebase Hosting / Vercel          |
+| CI/CD           | GitHub Actions                      |
+| API Secrets     | Firebase Env Config / GCP Secrets  |
+| UI Design       | Figma                               |
+| Team Collab     | Notion + GitHub + Google Meet      |
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/tips-tricks/custom-domain#step-by-step-guide)
+---
+
+## 📁 Project Folder Structure
+
+```plaintext
+/hostelhub
+├── /src
+│   ├── /components
+│   ├── /pages
+│   ├── /firebase
+│   ├── /services
+│   └── App.js
+├── /functions           # Firebase backend functions
+├── .env                 # Environment variables
+├── firestore.rules      # Firestore security rules
+└── package.json         # Project dependencies
+

@@ -98,20 +98,25 @@ const Attendance = () => {
       if (!user || !selectedDate) return;
       const newConfirmed: { [key: string]: boolean } = {};
       const newConfirmedStatus: { [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null } = {};
+      const newAttendanceStatus: { [key: string]: 'attending' | 'missed' | 'cancelled' | 'proxy' | null } = {};
       for (const lecture of timetable) {
         for (const day of lecture.day.split(', ')) {
           const dateForDay = getDateOfWeek(selectedDate, day);
           const key = `${lecture.subject}_${day}_${dateForDay}`;
+          const statusKey = `${lecture.subject}_${day}`;
           const recordRef = doc(db, 'users', user.uid, 'attendance', lecture.subject, 'records', key);
           const recordSnap = await getDoc(recordRef);
           if (recordSnap.exists()) {
+            const status = recordSnap.data().status || null;
             newConfirmed[key] = true;
-            newConfirmedStatus[key] = recordSnap.data().status || null;
+            newConfirmedStatus[key] = status;
+            newAttendanceStatus[statusKey] = status; // <-- This line ensures button highlight
           }
         }
       }
       setConfirmedAttendance(newConfirmed);
       setConfirmedStatus(newConfirmedStatus);
+      setAttendanceStatus(newAttendanceStatus); // <-- Add this line
     };
     fetchConfirmedAttendance();
     // eslint-disable-next-line

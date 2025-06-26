@@ -4,6 +4,7 @@ import { Calendar, Plus, Clock, CheckCircle, X, Users } from 'lucide-react';
 import { db } from '@/lib/firebase';
 import { collection, doc, setDoc, getDocs, getDoc } from 'firebase/firestore';
 import { useAuth } from '@/contexts/AuthContext';
+import { useNavigate } from 'react-router-dom';
 
 interface LectureBlock {
   id: string;
@@ -60,6 +61,14 @@ const Attendance = () => {
   const [timetable, setTimetable] = useState<LectureBlock[]>([]);
 
   const { user } = useAuth();
+  const navigate = useNavigate();
+
+  // Redirect to home if not logged in
+  useEffect(() => {
+    if (!user) {
+      navigate('/'); // Redirect to Dashboard or Home
+    }
+  }, [user, navigate]);
 
   // Fetch classes from Firestore on mount or when user changes
   useEffect(() => {

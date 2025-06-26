@@ -1,13 +1,23 @@
-
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Navigation from '@/components/Navigation';
 import StudyBuddyCard from '@/components/StudyBuddyCard';
 import { MapPin, Clock, Users, Filter, Search } from 'lucide-react';
+import { useNavigate } from 'react-router-dom';
+import { useAuth } from '@/contexts/AuthContext';
 
 const StudyBuddy = () => {
   const [currentStatus, setCurrentStatus] = useState<'Solo Focus' | 'Open to Study' | 'Need Help'>('Open to Study');
   const [selectedLocation, setSelectedLocation] = useState('all');
   const [selectedSubject, setSelectedSubject] = useState('all');
+
+  const { user } = useAuth();
+  const navigate = useNavigate();
+
+  useEffect(() => {
+    if (!user) {
+      navigate('/'); // Redirect to Dashboard or Home
+    }
+  }, [user, navigate]);
 
   const studyBuddies = [
     {

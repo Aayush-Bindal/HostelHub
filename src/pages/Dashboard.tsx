@@ -1,38 +1,85 @@
-
-import React from 'react';
+import React, { useEffect, useState } from 'react';
 import Navigation from '@/components/Navigation';
 import StatsCard from '@/components/StatsCard';
 import AttendanceCard from '@/components/AttendanceCard';
 import RecentActivity from '@/components/RecentActivity';
 import { BookOpen, Users, Calendar, TrendingUp } from 'lucide-react';
+import { collection, getDocs } from 'firebase/firestore';
+import { db } from '@/lib/firebase';
+import { useAuth } from '@/contexts/AuthContext';
 
 const Dashboard = () => {
-  const attendanceData = [
-    {
-      name: 'Mathematics',
-      attendance: 85,
-      totalClasses: 40,
-      attendedClasses: 34,
-      nextClass: 'Mon 9:00 AM',
-      canBunk: true
-    },
-    {
-      name: 'Physics',
-      attendance: 72,
-      totalClasses: 35,
-      attendedClasses: 25,
-      nextClass: 'Tue 11:00 AM',
-      canBunk: false
-    },
-    {
-      name: 'Chemistry',
-      attendance: 90,
-      totalClasses: 32,
-      attendedClasses: 29,
-      nextClass: 'Wed 2:00 PM',
-      canBunk: true
-    },
-  ];
+  const { user } = useAuth();
+  const [attendanceData, setAttendanceData] = useState<any[]>([]);
+
+  useEffect(() => {
+    const fetchAttendanceData = async () => {
+      if (!user) return;
+      const attendanceCol = collection(db, 'users', user.uid, 'attendance');
+      const subjectsSnap = await getDocs(attendanceCol);
+      const data: any[] = [];
+
+      for (const subjectDoc of subjectsSnap.docs) {
+        const subjectName = subjectDoc.id;
+        const recordsCol = collection(db, 'users', user.uid, 'attendance', subjectName, 'records');
+        const recordsSnap = await getDocs(recordsCol);
+
+        let attended = 0;
+        let missed = 0;
+        let cancelled = 0;
+        let proxy = 0;
+        let lastDate = '';
+        let nextClass = '';
+        let allDates: string[] = [];
+
+        recordsSnap.forEach(recordDoc => {
+          const rec = recordDoc.data();
+          allDates.push(rec.date);
+          if (rec.status === 'attending') attended++;
+          else if (rec.status === 'missed') missed++;
+          else if (rec.status === 'cancelled') cancelled++;
+          else if (rec.status === 'proxy') proxy++;
+        });
+
+        // Calculate total classes (attended + missed + cancelled)
+        const totalClasses = attended + missed + cancelled + proxy;
+        const attendedClasses = attended + proxy;
+        const attendance = totalClasses > 0 ? Math.round((attendedClasses / totalClasses) * 100) : 0;
+        const canBunk = attendance > 75;
+
+        // Find next class (future date, sorted)
+        if (subjectDoc.data().days && Array.isArray(subjectDoc.data().days)) {
+          // Find the next class day from today
+          const today = new Date();
+          let minDiff = Infinity;
+          subjectDoc.data().days.forEach(day => {
+            // Find next date for this day
+            const dayIndex = ['Sunday','Monday','Tuesday','Wednesday','Thursday','Friday','Saturday'].indexOf(day);
+            if (dayIndex === -1) return;
+            const diff = (dayIndex + 7 - today.getDay()) % 7;
+            const nextDate = new Date(today);
+            nextDate.setDate(today.getDate() + diff);
+            if (diff < minDiff) {
+              minDiff = diff;
+              nextClass = `${day} ${nextDate.toLocaleDateString('en-GB')}`;
+            }
+          });
+        }
+
+        data.push({
+          name: subjectName,
+          attendance,
+          totalClasses,
+          attendedClasses,
+          nextClass,
+          canBunk
+        });
+      }
+      setAttendanceData(data);
+    };
+
+    fetchAttendanceData();
+  }, [user]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-purple-50 via-white to-blue-50 dark:from-gray-900 dark:via-gray-800 dark:to-gray-900">
